@@ -1,0 +1,565 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Glimpse — see pixel dimensions and camera data in the Finder view you wish you had</title>
+<meta name="description" content="Glimpse is a free, open-source Mac app that shows image dimensions, camera settings, video duration and codec for every file in a folder. For designers and photographers. macOS 14+, Apple Silicon and Intel.">
+<link rel="icon" href="assets/favicon.png" type="image/png">
+<link rel="apple-touch-icon" href="assets/icon-128.png">
+<meta property="og:title" content="Glimpse for Mac">
+<meta property="og:description" content="Every image and video's dimensions, camera data and codec, right in the folder listing. Free and open source.">
+<meta property="og:image" content="https://fluidbrush.github.io/glimpse/assets/og.jpg">
+<meta property="og:url" content="https://fluidbrush.github.io/glimpse/">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#ffffff">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #ffffff;
+    --panel: #f4f4f7;
+    --ink: #17171c;
+    --muted: #62626e;
+    --line: #e3e3ea;
+    --pink: #e8236a;
+    --pink-deep: #c4175a;
+    --pink-soft: #fff0f5;
+    --frame: #1d1d22;
+    --coffee: #ffdd00;
+    --max: 1120px;
+    --gutter: 24px;
+    --radius: 14px;
+    --font: "Bricolage Grotesque", "Helvetica Neue", Arial, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } * { transition: none !important; animation: none !important; } }
+  body {
+    margin: 0; background: var(--paper); color: var(--ink);
+    font-family: var(--font); font-size: 17px; line-height: 1.6;
+    font-optical-sizing: auto; -webkit-font-smoothing: antialiased;
+  }
+  a { color: inherit; }
+  img { max-width: 100%; height: auto; display: block; }
+  h1, h2, h3 { margin: 0; line-height: 1.08; letter-spacing: -0.025em; font-weight: 700; }
+  h1 { font-size: clamp(2.5rem, 6.2vw, 4.6rem); letter-spacing: -0.035em; font-weight: 800; }
+  h2 { font-size: clamp(1.9rem, 3.6vw, 2.8rem); }
+  h3 { font-size: 1.25rem; letter-spacing: -0.015em; }
+  p { margin: 0; }
+  .wrap { max-width: var(--max); margin: 0 auto; padding: 0 var(--gutter); }
+  .muted { color: var(--muted); }
+  :focus-visible { outline: 3px solid var(--pink); outline-offset: 3px; border-radius: 6px; }
+
+  /* ---------- buttons ---------- */
+  .btn {
+    display: inline-flex; align-items: center; gap: 10px; text-decoration: none;
+    font-weight: 600; font-size: 1rem; padding: 14px 22px; border-radius: 999px;
+    border: 1.5px solid transparent; transition: transform .15s ease, background .15s ease, border-color .15s ease;
+    white-space: nowrap;
+  }
+  .btn:active { transform: translateY(1px); }
+  .btn-primary { background: var(--pink); color: #fff; }
+  .btn-primary:hover { background: var(--pink-deep); }
+  .btn-ghost { border-color: var(--line); color: var(--ink); background: var(--paper); }
+  .btn-ghost:hover { border-color: var(--ink); }
+  .btn-coffee { background: var(--coffee); color: #2b2300; border-color: var(--coffee); }
+  .btn-coffee:hover { background: #ffe74d; }
+  .btn-sm { padding: 9px 16px; font-size: .95rem; }
+  .btn svg { width: 18px; height: 18px; flex: none; }
+
+  /* ---------- nav ---------- */
+  .nav {
+    position: sticky; top: 0; z-index: 50; background: rgba(255,255,255,.85);
+    backdrop-filter: saturate(160%) blur(14px); -webkit-backdrop-filter: saturate(160%) blur(14px);
+    border-bottom: 1px solid transparent; transition: border-color .2s ease;
+  }
+  .nav.scrolled { border-bottom-color: var(--line); }
+  .nav .wrap { display: flex; align-items: center; gap: 24px; height: 64px; }
+  .brand { display: flex; align-items: center; gap: 10px; text-decoration: none; font-weight: 700; font-size: 1.15rem; letter-spacing: -0.02em; }
+  .brand img { width: 30px; height: 30px; }
+  .nav-links { display: flex; gap: 22px; margin-left: 12px; font-size: .97rem; }
+  .nav-links a { text-decoration: none; color: var(--muted); }
+  .nav-links a:hover { color: var(--ink); }
+  .nav-actions { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+  .nav .coffee-slot { display: inline-flex; opacity: 0; transform: translateY(-6px); pointer-events: none; transition: opacity .25s ease, transform .25s ease; }
+  .nav.scrolled .coffee-slot { opacity: 1; transform: none; pointer-events: auto; }
+  .icon-link { display: inline-flex; width: 38px; height: 38px; align-items: center; justify-content: center; border-radius: 999px; color: var(--ink); }
+  .icon-link:hover { background: var(--panel); }
+  .icon-link svg { width: 20px; height: 20px; }
+
+  /* ---------- hero ---------- */
+  .hero { padding: 72px 0 40px; }
+  .hero-grid { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, .85fr); gap: 48px; align-items: end; }
+  .hero h1 { max-width: 12ch; }
+  .hero-side { display: flex; flex-direction: column; gap: 22px; padding-bottom: 10px; }
+  .lede { font-size: 1.25rem; line-height: 1.5; max-width: 34ch; color: var(--muted); }
+  .cta-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+  .fineprint { font-size: .92rem; color: var(--muted); }
+  .fineprint b { color: var(--ink); font-weight: 600; }
+
+  /* the measured screenshot: the one bold moment on the page */
+  .measured { position: relative; margin: 56px 0 0; padding: 36px 36px 0 0; }
+  .shot {
+    border-radius: 12px; overflow: hidden; background: var(--frame);
+    box-shadow: 0 1px 0 rgba(0,0,0,.06), 0 24px 60px -24px rgba(23,23,28,.45), 0 0 0 1px rgba(0,0,0,.08);
+  }
+  .shot img { width: 100%; }
+  .dim { position: absolute; color: var(--pink); font-weight: 600; font-size: .85rem; letter-spacing: .01em; font-variant-numeric: tabular-nums; }
+  .dim-x { left: 0; right: 36px; top: 10px; height: 14px; }
+  .dim-x::before { content: ""; position: absolute; left: 0; right: 0; top: 7px; height: 1.5px; background: var(--pink); }
+  .dim-x::after, .dim-x i { content: ""; position: absolute; top: 0; width: 1.5px; height: 14px; background: var(--pink); }
+  .dim-x::after { right: 0; } .dim-x i { left: 0; }
+  .dim-x span { position: absolute; left: 50%; top: -3px; transform: translate(-50%, -100%); background: var(--paper); padding: 0 8px; }
+  .dim-y { top: 36px; bottom: 0; right: 10px; width: 14px; }
+  .dim-y::before { content: ""; position: absolute; top: 0; bottom: 0; left: 7px; width: 1.5px; background: var(--pink); }
+  .dim-y::after, .dim-y i { content: ""; position: absolute; left: 0; width: 14px; height: 1.5px; background: var(--pink); }
+  .dim-y::after { bottom: 0; } .dim-y i { top: 0; }
+  .dim-y span { position: absolute; top: 50%; left: 7px; transform: translate(-50%, -50%) rotate(90deg); transform-origin: center; background: var(--paper); padding: 0 8px; white-space: nowrap; }
+
+  /* ---------- sections ---------- */
+  section { padding: 88px 0; }
+  .section-head { max-width: 56ch; margin-bottom: 40px; }
+  .section-head p { margin-top: 14px; font-size: 1.12rem; color: var(--muted); max-width: 52ch; }
+
+  /* comparison: same folder, two views */
+  .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .pane { border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; background: var(--paper); }
+  .pane header { padding: 14px 18px; border-bottom: 1px solid var(--line); font-weight: 600; display: flex; justify-content: space-between; align-items: center; background: var(--panel); }
+  .pane header small { color: var(--muted); font-weight: 500; }
+  .pane.glimpse header { background: var(--pink-soft); border-bottom-color: #ffd3e2; }
+  .pane .scroll { overflow-x: auto; }
+  .pane table { width: 100%; border-collapse: collapse; font-size: .95rem; }
+  .pane th { text-align: left; font-weight: 500; color: var(--muted); padding: 10px 18px; border-bottom: 1px solid var(--line); font-size: .85rem; }
+  .pane td { padding: 11px 18px; border-bottom: 1px solid var(--line); white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .pane tr:last-child td { border-bottom: 0; }
+  .pane td.dash { color: #b5b5c0; }
+  .pane td.num { font-weight: 600; }
+  .pane .star { color: #e9b400; }
+  .tagdot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; vertical-align: 1px; }
+
+  /* feature rows */
+  .feature { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 56px; align-items: center; padding: 48px 0; border-top: 1px solid var(--line); }
+  .feature:first-of-type { border-top: 0; padding-top: 0; }
+  .feature.flip .feature-text { order: 2; }
+  .feature-text { display: flex; flex-direction: column; gap: 16px; }
+  .feature-text h3 { font-size: clamp(1.5rem, 2.4vw, 1.95rem); }
+  .feature-text p { color: var(--muted); max-width: 44ch; }
+  .feature-text ul { margin: 4px 0 0; padding: 0; list-style: none; display: grid; gap: 8px; color: var(--ink); font-size: .97rem; }
+  .feature-text li { padding-left: 22px; position: relative; }
+  .feature-text li::before { content: ""; position: absolute; left: 0; top: .62em; width: 10px; height: 2px; background: var(--pink); }
+  .feature-media .shot { box-shadow: 0 1px 0 rgba(0,0,0,.05), 0 18px 48px -22px rgba(23,23,28,.4), 0 0 0 1px rgba(0,0,0,.08); }
+  .feature-media.narrow { max-width: 380px; margin: 0 auto; }
+  kbd { font-family: inherit; font-size: .82em; font-weight: 600; background: var(--panel); border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 6px; padding: 1px 7px; white-space: nowrap; }
+
+  /* faux context menu */
+  .menu {
+    max-width: 340px; margin: 0 auto; background: rgba(40,40,46,.96); color: #f2f2f5; border-radius: 10px;
+    padding: 6px; font-size: .93rem; box-shadow: 0 1px 0 rgba(255,255,255,.08) inset, 0 20px 50px -20px rgba(0,0,0,.6), 0 0 0 1px rgba(0,0,0,.35);
+  }
+  .menu > div { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 5px 12px; border-radius: 6px; }
+  .menu > div:nth-child(8) { background: var(--pink); color: #fff; }
+  .menu kbd { background: transparent; border: 0; color: #9d9da8; font-weight: 500; font-size: .85em; padding: 0; }
+  .menu > div:nth-child(8) kbd { color: #ffd1e0; }
+  .menu-row { font-weight: 600; }
+  .menu-hint { color: #9d9da8; font-weight: 500; font-variant-numeric: tabular-nums; }
+  .menu-sep { height: 1px; background: rgba(255,255,255,.12); margin: 5px 10px; padding: 0 !important; }
+  .menu-dots { display: inline-flex; gap: 5px; }
+  .menu-dots i { width: 11px; height: 11px; border-radius: 50%; }
+  .menu-danger { color: #ff6b6b; }
+
+  /* columns cloud */
+  .columns-cloud { display: flex; flex-wrap: wrap; gap: 8px; }
+  .columns-cloud span { padding: 7px 13px; border: 1px solid var(--line); border-radius: 999px; font-size: .93rem; background: var(--paper); }
+  .columns-cloud span.on { background: var(--ink); color: #fff; border-color: var(--ink); }
+
+  /* shortcuts */
+  .shortcuts { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 0 40px; margin-top: 8px; }
+  .shortcuts div { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 11px 0; border-bottom: 1px solid var(--line); font-size: .97rem; }
+  .shortcuts div > span:last-child { white-space: nowrap; }
+  .shortcuts kbd + kbd { margin-left: 3px; }
+
+  /* dark band: privacy + support */
+  .band { background: var(--frame); color: #fff; }
+  .band .section-head p, .band .muted { color: #a9a9b6; }
+  .band-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; align-items: start; }
+  .band h2 { color: #fff; }
+  .facts { display: grid; gap: 14px; margin-top: 8px; }
+  .facts div { display: grid; grid-template-columns: 26px 1fr; gap: 12px; align-items: start; font-size: 1.02rem; }
+  .facts svg { width: 22px; height: 22px; color: var(--pink); margin-top: 3px; }
+  .support { background: #26262c; border-radius: var(--radius); padding: 32px; display: flex; flex-direction: column; gap: 18px; }
+  .support p { color: #c9c9d4; max-width: 40ch; }
+  .support .cta-row { margin-top: 4px; }
+
+  /* FAQ */
+  .faq { max-width: 760px; }
+  .faq details { border-top: 1px solid var(--line); }
+  .faq details:last-child { border-bottom: 1px solid var(--line); }
+  .faq summary { cursor: pointer; list-style: none; padding: 20px 0; font-weight: 600; font-size: 1.08rem; display: flex; justify-content: space-between; gap: 20px; align-items: center; }
+  .faq summary::-webkit-details-marker { display: none; }
+  .faq summary::after { content: "+"; font-weight: 500; font-size: 1.5rem; line-height: 1; color: var(--muted); transition: transform .2s ease; }
+  .faq details[open] summary::after { transform: rotate(45deg); }
+  .faq .answer { padding: 0 0 22px; color: var(--muted); max-width: 64ch; }
+  code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .88em; background: var(--panel); padding: 2px 6px; border-radius: 5px; white-space: nowrap; }
+
+  /* footer */
+  footer { border-top: 1px solid var(--line); padding: 40px 0 56px; font-size: .95rem; color: var(--muted); }
+  footer .wrap { display: flex; flex-wrap: wrap; gap: 18px 32px; align-items: center; justify-content: space-between; }
+  footer nav { display: flex; flex-wrap: wrap; gap: 20px; }
+  footer a { text-decoration: none; }
+  footer a:hover { color: var(--ink); }
+
+  /* ---------- responsive ---------- */
+  @media (max-width: 900px) {
+    .hero-grid { grid-template-columns: 1fr; gap: 28px; }
+    .hero h1 { max-width: 14ch; }
+    .feature, .feature.flip { grid-template-columns: 1fr; gap: 28px; }
+    .feature.flip .feature-text { order: 0; }
+    .band-grid { grid-template-columns: 1fr; }
+    .compare { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 720px) {
+    body { font-size: 16px; }
+    section { padding: 64px 0; }
+    .hero { padding-top: 40px; }
+    .nav-links { display: none; }
+    .nav .wrap { height: 58px; gap: 12px; }
+    .nav .btn-sm { padding: 8px 14px; }
+    .nav .coffee-slot .btn span { display: none; }
+    .measured { padding: 0; margin: 36px 0 0; }
+    .dim { display: none; }
+    .shot { border-radius: 8px; }
+    .pane td, .pane th { padding-left: 12px; padding-right: 12px; }
+    .pane:not(.glimpse) th:nth-child(2), .pane:not(.glimpse) td:nth-child(2),
+    .pane.glimpse th:nth-child(4), .pane.glimpse td:nth-child(4) { display: none; }
+    .support { padding: 24px; }
+    .btn { padding: 13px 18px; }
+  }
+</style>
+</head>
+<body>
+
+<header class="nav" id="nav">
+  <div class="wrap">
+    <a class="brand" href="#top" aria-label="Glimpse home"><img src="assets/icon-128.png" alt="" width="30" height="30">Glimpse</a>
+    <nav class="nav-links" aria-label="Sections">
+      <a href="#features">Features</a>
+      <a href="#shortlist">Shortlist</a>
+      <a href="#privacy">Privacy</a>
+      <a href="#faq">FAQ</a>
+    </nav>
+    <div class="nav-actions">
+      <span class="coffee-slot">
+        <a class="btn btn-coffee btn-sm" href="https://buymeacoffee.com/fluidbrush" target="_blank" rel="noopener">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 8h1a4 4 0 1 1 0 8h-1"/><path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4z"/><path d="M6 2v2M10 2v2M14 2v2"/></svg>
+          <span>Buy me a coffee</span>
+        </a>
+      </span>
+      <a class="icon-link" href="https://github.com/fluidbrush/glimpse" target="_blank" rel="noopener" aria-label="Glimpse on GitHub">
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5a12 12 0 0 0-3.8 23.4c.6.1.8-.3.8-.6v-2.2c-3.3.7-4-1.4-4-1.4-.6-1.4-1.4-1.8-1.4-1.8-1.1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1.1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.8-1.6-2.7-.3-5.5-1.3-5.5-5.9 0-1.3.5-2.4 1.2-3.2-.1-.3-.5-1.5.1-3.2 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0c2.3-1.5 3.3-1.2 3.3-1.2.7 1.7.3 2.9.1 3.2.8.8 1.2 1.9 1.2 3.2 0 4.6-2.8 5.6-5.5 5.9.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A12 12 0 0 0 12 .5z"/></svg>
+      </a>
+      <a class="btn btn-primary btn-sm js-download" href="https://github.com/fluidbrush/glimpse/releases/latest">Download</a>
+    </div>
+  </div>
+</header>
+
+<main id="top">
+  <section class="hero" id="hero">
+    <div class="wrap">
+      <div class="hero-grid">
+        <h1>Every pixel dimension, without opening a single file.</h1>
+        <div class="hero-side">
+          <p class="lede">Glimpse is a folder browser for Mac that shows the width, height, camera settings and video details of everything inside — the way Finder should have.</p>
+          <div class="cta-row">
+            <a class="btn btn-primary js-download" href="https://github.com/fluidbrush/glimpse/releases/latest">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M4 19h16"/></svg>
+              Download for Mac
+            </a>
+            <a class="btn btn-ghost" href="https://github.com/fluidbrush/glimpse" target="_blank" rel="noopener">View source</a>
+          </div>
+          <p class="fineprint"><b>Free and open source.</b> <span class="js-version">Version 1.0.0</span> · macOS 14 or later · Apple Silicon and Intel · 2 MB</p>
+        </div>
+      </div>
+
+      <figure class="measured" aria-label="Glimpse list view, measured like one of its own images">
+        <div class="dim dim-x" aria-hidden="true"><i></i><span>1600 × 1000</span></div>
+        <div class="dim dim-y" aria-hidden="true"><i></i><span>1000 px</span></div>
+        <div class="shot">
+          <img src="assets/shot-list.webp" srcset="assets/shot-list-800.webp 800w, assets/shot-list.webp 1600w" sizes="(max-width: 1168px) 100vw, 1084px" width="1600" height="1000" alt="Glimpse showing a folder of RAW and JPEG photos as a list with Name, Tags, Kind, Dimensions, Size and Modified columns, and an inspector panel with the selected photo's camera settings" fetchpriority="high">
+        </div>
+      </figure>
+    </div>
+  </section>
+
+  <section id="compare">
+    <div class="wrap">
+      <div class="section-head">
+        <h2>Same folder. One of these answers the question.</h2>
+        <p>Finder knows a file's size and kind. Ask it how big a photo is and it sends you to Get Info, one file at a time, and gives up entirely when a folder mixes JPEGs, RAWs, PSDs and videos.</p>
+      </div>
+      <div class="compare">
+        <div class="pane">
+          <header>Finder <small>Pictures › photos-2026</small></header>
+          <div class="scroll"><table>
+            <thead><tr><th>Name</th><th>Kind</th><th>Size</th><th>Dimensions</th></tr></thead>
+            <tbody>
+              <tr><td>IMG_3513.CR2</td><td>Canon CR2</td><td>18 MB</td><td class="dash">—</td></tr>
+              <tr><td>IMG_3513.JPG</td><td>JPEG image</td><td>4.9 MB</td><td class="dash">—</td></tr>
+              <tr><td>hero-banner.psd</td><td>Photoshop</td><td>86 MB</td><td class="dash">—</td></tr>
+              <tr><td>reel-final.mov</td><td>QuickTime movie</td><td>412 MB</td><td class="dash">—</td></tr>
+            </tbody>
+          </table></div>
+        </div>
+        <div class="pane glimpse">
+          <header>Glimpse <small>Pictures › photos-2026</small></header>
+          <div class="scroll"><table>
+            <thead><tr><th>Name</th><th>Dimensions</th><th>Camera</th><th>Duration</th></tr></thead>
+            <tbody>
+              <tr><td><span class="star">★</span> IMG_3513.CR2</td><td class="num">4752 × 3168</td><td>Canon EOS 500D</td><td class="dash">—</td></tr>
+              <tr><td><span class="tagdot" style="background:#5dd053"></span>IMG_3513.JPG</td><td class="num">4752 × 3168</td><td>Canon EOS 500D</td><td class="dash">—</td></tr>
+              <tr><td>hero-banner.psd</td><td class="num">2880 × 1620</td><td class="dash">—</td><td class="dash">—</td></tr>
+              <tr><td>reel-final.mov</td><td class="num">1080 × 1920</td><td>iPhone 15 Pro</td><td class="num">0:42 · 30 fps · HEVC</td></tr>
+            </tbody>
+          </table></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="features">
+    <div class="wrap">
+      <div class="section-head">
+        <h2>Built for people who look at a lot of images.</h2>
+        <p>Photographers checking a shoot, designers hunting for the 2× export, developers who need the exact size for a CSS rule. Glimpse reads the numbers from the file headers, so nothing is decoded and nothing is slow.</p>
+      </div>
+
+      <div class="feature">
+        <div class="feature-text">
+          <h3>Thumbnails that tell you the size</h3>
+          <p>Switch to the thumbnail view and every picture carries its dimensions and file size underneath. Slide the size control to go from contact sheet to full preview.</p>
+          <ul>
+            <li>RAW, HEIC, PSD, SVG, PDF and video thumbnails</li>
+            <li>Rotation-aware: a portrait photo reads as portrait</li>
+            <li>Thumbnails come from the camera's embedded preview, so a folder of 500 RAW files is quick</li>
+          </ul>
+        </div>
+        <div class="feature-media">
+          <div class="shot"><img src="assets/shot-grid.webp" srcset="assets/shot-grid-800.webp 800w, assets/shot-grid.webp 1600w" sizes="(max-width: 900px) 100vw, 620px" width="1600" height="1000" alt="Thumbnail view with dimensions and file size under each photo, and a starred, selected photo" loading="lazy"></div>
+        </div>
+      </div>
+
+      <div class="feature flip">
+        <div class="feature-text">
+          <h3>Space bar. Just like Finder.</h3>
+          <p>Press Space for a full-size Quick Look, use the arrow keys to step through the folder, and the inspector keeps up with the camera data for whatever you're looking at.</p>
+          <ul>
+            <li><kbd>Space</kbd> Quick Look, <kbd>⌘Y</kbd> too</li>
+            <li>Copy Size puts <code>4752 × 3168</code> on the clipboard; Copy CSS gives you <code>width: 4752px; height: 3168px;</code></li>
+            <li>Open in your editor, reveal in Finder, or drag the file anywhere</li>
+          </ul>
+        </div>
+        <div class="feature-media">
+          <div class="shot"><img src="assets/shot-quicklook.webp" srcset="assets/shot-quicklook-800.webp 800w, assets/shot-quicklook.webp 1600w" sizes="(max-width: 900px) 100vw, 620px" width="1600" height="1000" alt="Quick Look panel showing a RAW photo of a pink flower, over the Glimpse window" loading="lazy"></div>
+        </div>
+      </div>
+
+      <div class="feature" id="shortlist">
+        <div class="feature-text">
+          <h3>Shortlist your best work</h3>
+          <p>Star the keepers with <kbd>⇧⌘L</kbd> and colour-tag the rest with <kbd>⌃1</kbd>–<kbd>⌃7</kbd>. They're real Finder tags, so your picks show up in Finder, Spotlight and every other app — and a toolbar filter shows only the shortlist when it's time to deliver.</p>
+          <ul>
+            <li>Star and colour dots in the list, the thumbnails and the inspector</li>
+            <li>Tags survive renames, moves and copies</li>
+            <li>Filter by shortlist, by a colour, or to the untagged leftovers</li>
+          </ul>
+        </div>
+        <div class="feature-media narrow">
+          <div class="shot"><img src="assets/inspector.webp" width="579" height="1150" alt="Inspector panel with a Shortlisted star, colour tag buttons, and the General, Media and Camera details of a RAW photo" loading="lazy"></div>
+        </div>
+      </div>
+
+      <div class="feature flip">
+        <div class="feature-text">
+          <h3>Manage files without leaving</h3>
+          <p>Copy, paste, move, duplicate, rename, new folder, move to Trash — with Finder's own shortcuts and Finder's own clipboard, so you can copy here and paste there.</p>
+          <ul>
+            <li><kbd>⌘C</kbd> <kbd>⌘V</kbd> copy and paste, <kbd>⌥⌘V</kbd> move the copied files here</li>
+            <li><kbd>⌘D</kbd> duplicates as <code>copy_name.jpg</code>, <kbd>Return</kbd> renames</li>
+            <li>Copy to Folder…, Move to Folder…, and New Folder with Selection</li>
+          </ul>
+        </div>
+        <div class="feature-media">
+          <div class="menu" role="img" aria-label="Glimpse's right-click menu: Open, Quick Look, Reveal in Finder, Rename, Add to Shortlist, Tags, Copy, Paste, Duplicate, Copy to Folder, Move to Folder, New Folder with Selection, Copy Dimensions, Move to Trash">
+            <div class="menu-row"><span>IMG_3513.CR2</span><span class="menu-hint">4752 × 3168</span></div>
+            <div class="menu-sep"></div>
+            <div>Open</div>
+            <div>Quick Look<kbd>Space</kbd></div>
+            <div>Reveal in Finder</div>
+            <div>Rename…<kbd>Return</kbd></div>
+            <div class="menu-sep"></div>
+            <div>Add to Shortlist<kbd>⇧⌘L</kbd></div>
+            <div>Tags<span class="menu-dots"><i style="background:#ff5257"></i><i style="background:#ffa82e"></i><i style="background:#ffd82e"></i><i style="background:#5dd053"></i><i style="background:#2e8cff"></i><i style="background:#c66bff"></i><i style="background:#8e8e93"></i></span></div>
+            <div class="menu-sep"></div>
+            <div>Copy<kbd>⌘C</kbd></div>
+            <div>Paste<kbd>⌘V</kbd></div>
+            <div>Duplicate<kbd>⌘D</kbd></div>
+            <div class="menu-sep"></div>
+            <div>Copy to Folder…</div>
+            <div>Move to Folder…</div>
+            <div>New Folder with Selection<kbd>⌃⌘N</kbd></div>
+            <div class="menu-sep"></div>
+            <div>Copy Dimensions</div>
+            <div class="menu-danger">Move to Trash<kbd>⌘⌫</kbd></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="feature">
+        <div class="feature-text">
+          <h3>Only the columns you care about</h3>
+          <p>Twenty-three columns, every one sortable. A retoucher shows Camera, Lens and ISO; a web designer shows Width, Height and DPI; a video editor shows Duration, Frame rate and Codec. Glimpse remembers your layout.</p>
+        </div>
+        <div class="feature-media">
+          <div class="columns-cloud" aria-label="Available columns">
+            <span class="on">Name</span><span class="on">Tags</span><span class="on">Kind</span><span class="on">Dimensions</span><span>Width</span><span>Height</span><span>Aspect ratio</span><span>Megapixels</span><span class="on">Size</span><span class="on">Date modified</span><span>Date created</span><span class="on">Camera</span><span>Lens</span><span>ISO</span><span>Aperture</span><span>Shutter</span><span>Focal length</span><span class="on">Date taken</span><span class="on">Duration</span><span>Frame rate</span><span>Codec</span><span>Color</span><span>DPI</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="shortcuts" style="padding-top:0">
+    <div class="wrap">
+      <div class="section-head">
+        <h2>Your hands stay on the keyboard.</h2>
+      </div>
+      <div class="shortcuts">
+        <div><span>Quick Look</span><span><kbd>Space</kbd></span></div>
+        <div><span>Shortlist</span><span><kbd>⇧</kbd><kbd>⌘</kbd><kbd>L</kbd></span></div>
+        <div><span>Colour tag</span><span><kbd>⌃</kbd><kbd>1</kbd>–<kbd>7</kbd></span></div>
+        <div><span>List or thumbnails</span><span><kbd>⌘</kbd><kbd>1</kbd> / <kbd>⌘</kbd><kbd>2</kbd></span></div>
+        <div><span>Inspector</span><span><kbd>⌥</kbd><kbd>⌘</kbd><kbd>I</kbd></span></div>
+        <div><span>Rename</span><span><kbd>Return</kbd></span></div>
+        <div><span>Duplicate</span><span><kbd>⌘</kbd><kbd>D</kbd></span></div>
+        <div><span>New folder</span><span><kbd>⇧</kbd><kbd>⌘</kbd><kbd>N</kbd></span></div>
+        <div><span>Enclosing folder</span><span><kbd>⌘</kbd><kbd>↑</kbd></span></div>
+        <div><span>Refresh folder</span><span><kbd>⌘</kbd><kbd>R</kbd></span></div>
+        <div><span>Move to Trash</span><span><kbd>⌘</kbd><kbd>⌫</kbd></span></div>
+        <div><span>Show hidden files</span><span><kbd>⇧</kbd><kbd>⌘</kbd><kbd>.</kbd></span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="band" id="privacy">
+    <div class="wrap">
+      <div class="band-grid">
+        <div>
+          <div class="section-head">
+            <h2>Nothing leaves your Mac.</h2>
+            <p>Glimpse is a native Swift app with no accounts, no analytics and no network code at all. You can read every line of it.</p>
+          </div>
+          <div class="facts">
+            <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg><span>Only the folder you open is read. Nothing crawls your disk in the background.</span></div>
+            <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></svg><span>Deleting always goes to the Trash. Nothing is removed for good.</span></div>
+            <div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m16 18 6-6-6-6"/><path d="m8 6-6 6 6 6"/></svg><span>MIT licensed, built from source by GitHub Actions. Universal binary for Apple Silicon and Intel.</span></div>
+          </div>
+        </div>
+        <div class="support" id="support">
+          <h3>Free, and staying that way</h3>
+          <p>Glimpse is made by one person in spare evenings. If it saves you a few minutes a day, a coffee keeps the evenings going.</p>
+          <div class="cta-row">
+            <a class="btn btn-coffee" href="https://buymeacoffee.com/fluidbrush" target="_blank" rel="noopener">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 8h1a4 4 0 1 1 0 8h-1"/><path d="M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4z"/><path d="M6 2v2M10 2v2M14 2v2"/></svg>
+              Buy me a coffee
+            </a>
+            <a class="btn btn-ghost" style="background:transparent;color:#fff;border-color:#4a4a55" href="https://github.com/fluidbrush/glimpse" target="_blank" rel="noopener">Star on GitHub</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="faq">
+    <div class="wrap">
+      <div class="section-head">
+        <h2>Questions</h2>
+      </div>
+      <div class="faq">
+        <details>
+          <summary>macOS says it can't verify the developer. What now?</summary>
+          <div class="answer">Glimpse is signed but not yet notarised with an Apple Developer ID. Right-click the app in Applications, choose <strong>Open</strong>, then <strong>Open</strong> again. You only need to do this once; afterwards it launches normally.</div>
+        </details>
+        <details>
+          <summary>Which files does it understand?</summary>
+          <div class="answer">JPEG, PNG, GIF, WebP, HEIC/HEIF, AVIF, TIFF, PSD, BMP and SVG; camera RAW from Canon, Nikon, Sony, Fujifilm, Olympus, Panasonic and DNG; MP4, MOV and M4V video; MP3, M4A and WAV audio; PDF and Illustrator files. Anything else is listed with its size and dates.</div>
+        </details>
+        <details>
+          <summary>Does it change my files?</summary>
+          <div class="answer">Only when you ask it to: copy, move, rename, duplicate, new folder, move to Trash, or set a tag. Reading metadata never modifies a file. Shortlist and colour tags are stored the same way Finder stores them, so they are visible in Finder and removable there too.</div>
+        </details>
+        <details>
+          <summary>Why does it ask for permission to see my Desktop or Documents?</summary>
+          <div class="answer">That is macOS's standard privacy prompt for any app that opens those folders. Glimpse needs to read them to list what's inside. Say no and it simply won't show those folders.</div>
+        </details>
+        <details>
+          <summary>Will it slow down with a big folder?</summary>
+          <div class="answer">It reads 2–6 files at a time, uses the camera's embedded preview for thumbnails and never decodes full images for dimensions. Only the folder you are viewing is scanned, and the scan stops the moment you move on. Folder-size calculation is off by default because it needs to walk sub-folders; turn it on in Settings when you want it.</div>
+        </details>
+        <details>
+          <summary>Where are my settings kept?</summary>
+          <div class="answer">In <code>~/Library/Preferences/com.fluidbrush.glimpse.plist</code> — view options, column layout, favourite and recent folder paths. Delete that file to reset everything.</div>
+        </details>
+        <details>
+          <summary>Can I build it myself?</summary>
+          <div class="answer">Yes. Clone the repository and run <code>./build.sh</code> with the Xcode Command Line Tools installed. It produces the app and the DMG; no other dependencies.</div>
+        </details>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>© 2026 <a href="https://github.com/fluidbrush" target="_blank" rel="noopener">Fluidbrush</a>. Glimpse is released under the MIT License.</span>
+    <nav aria-label="Footer">
+      <a href="https://github.com/fluidbrush/glimpse" target="_blank" rel="noopener">GitHub</a>
+      <a href="https://github.com/fluidbrush/glimpse/releases" target="_blank" rel="noopener">Releases</a>
+      <a href="https://github.com/fluidbrush/glimpse/issues" target="_blank" rel="noopener">Report a problem</a>
+      <a href="https://buymeacoffee.com/fluidbrush" target="_blank" rel="noopener">Buy me a coffee</a>
+    </nav>
+  </div>
+</footer>
+
+<script>
+  // Sticky nav: show the coffee button once the hero has scrolled away.
+  (function () {
+    var nav = document.getElementById('nav');
+    var hero = document.getElementById('hero');
+    if ('IntersectionObserver' in window) {
+      new IntersectionObserver(function (entries) {
+        nav.classList.toggle('scrolled', !entries[0].isIntersecting);
+      }, { rootMargin: '-64px 0px 0px 0px', threshold: 0 }).observe(hero);
+    } else {
+      window.addEventListener('scroll', function () { nav.classList.toggle('scrolled', window.scrollY > 400); });
+    }
+  })();
+
+  // Point every Download button at the newest DMG and show its version.
+  (function () {
+    var fallback = 'https://github.com/fluidbrush/glimpse/releases/latest';
+    fetch('https://api.github.com/repos/fluidbrush/glimpse/releases/latest', { headers: { Accept: 'application/vnd.github+json' } })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (release) {
+        if (!release) return;
+        var dmg = (release.assets || []).filter(function (a) { return /\.dmg$/i.test(a.name); })[0];
+        var href = dmg ? dmg.browser_download_url : fallback;
+        document.querySelectorAll('.js-download').forEach(function (a) { a.href = href; });
+        var version = (release.tag_name || '').replace(/^v/, '');
+        if (version) document.querySelectorAll('.js-version').forEach(function (el) { el.textContent = 'Version ' + version; });
+      })
+      .catch(function () {});
+  })();
+</script>
+</body>
+</html>

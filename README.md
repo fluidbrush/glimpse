@@ -10,6 +10,7 @@
 </p>
 
 <p align="center">
+  <a href="https://fluidbrush.github.io/glimpse/">Website</a> ·
   <a href="https://github.com/fluidbrush/glimpse/releases/latest">Download the latest DMG</a> ·
   macOS 14 Sonoma or newer · Apple Silicon &amp; Intel · Free, MIT-licensed
 </p>
@@ -97,6 +98,10 @@ Sources/Glimpse/
   InspectorView.swift     detail panel + tag editor
   SettingsView.swift      Settings window (⌘,)
 ```
+
+## Website
+
+The landing page lives in `docs/` and is served by GitHub Pages at https://fluidbrush.github.io/glimpse/. It is a single static HTML file; the download buttons read the newest release from the GitHub API.
 
 ## Contributing
 
