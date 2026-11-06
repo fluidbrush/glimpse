@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>en</string>
+	<key>CFBundleExecutable</key>
+	<string>Glimpse</string>
+	<key>CFBundleIconFile</key>
+	<string>AppIcon</string>
+	<key>CFBundleIdentifier</key>
+	<string>com.fluidbrush.glimpse</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>Glimpse</string>
+	<key>CFBundleDisplayName</key>
+	<string>Glimpse</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>__VERSION__</string>
+	<key>CFBundleVersion</key>
+	<string>__BUILD__</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>14.0</string>
+	<key>LSApplicationCategoryType</key>
+	<string>public.app-category.graphics-design</string>
+	<key>NSHighResolutionCapable</key>
+	<true/>
+	<key>NSSupportsAutomaticGraphicsSwitching</key>
+	<true/>
+	<key>NSHumanReadableCopyright</key>
+	<string>© 2026 Fluidbrush</string>
+	<key>NSDesktopFolderUsageDescription</key>
+	<string>Glimpse reads the folders you browse to show image and video dimensions.</string>
+	<key>NSDocumentsFolderUsageDescription</key>
+	<string>Glimpse reads the folders you browse to show image and video dimensions.</string>
+	<key>NSDownloadsFolderUsageDescription</key>
+	<string>Glimpse reads the folders you browse to show image and video dimensions.</string>
+	<key>NSRemovableVolumesUsageDescription</key>
+	<string>Glimpse reads the folders you browse to show image and video dimensions.</string>
+	<key>NSNetworkVolumesUsageDescription</key>
+	<string>Glimpse reads the folders you browse to show image and video dimensions.</string>
+</dict>
+</plist>
