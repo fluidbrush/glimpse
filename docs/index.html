@@ -127,23 +127,25 @@
   .fineprint b { color: var(--ink); font-weight: 600; }
 
   /* the measured screenshot: the one bold moment on the page */
-  .measured { position: relative; margin: 56px 0 0; padding: 36px 36px 0 0; }
+  .measured { position: relative; margin: 56px 0 0; padding: 0; }
   .shot {
     border-radius: 12px; overflow: hidden; background: var(--frame);
     box-shadow: 0 24px 60px -24px var(--shot-shadow), 0 0 0 1px var(--shot-ring);
   }
   .shot img { width: 100%; }
-  .dim { position: absolute; color: var(--pink); font-weight: 600; font-size: .85rem; letter-spacing: .01em; font-variant-numeric: tabular-nums; }
-  .dim-x { left: 0; right: 36px; top: 10px; height: 14px; }
-  .dim-x::before { content: ""; position: absolute; left: 0; right: 0; top: 7px; height: 1.5px; background: var(--pink); }
-  .dim-x::after, .dim-x i { content: ""; position: absolute; top: 0; width: 1.5px; height: 14px; background: var(--pink); }
-  .dim-x::after { right: 0; } .dim-x i { left: 0; }
-  .dim-x span { position: absolute; left: 50%; top: -3px; transform: translate(-50%, -100%); background: var(--paper); padding: 0 8px; }
-  .dim-y { top: 36px; bottom: 0; right: 10px; width: 14px; }
-  .dim-y::before { content: ""; position: absolute; top: 0; bottom: 0; left: 7px; width: 1.5px; background: var(--pink); }
-  .dim-y::after, .dim-y i { content: ""; position: absolute; left: 0; width: 14px; height: 1.5px; background: var(--pink); }
-  .dim-y::after { bottom: 0; } .dim-y i { top: 0; }
-  .dim-y span { position: absolute; top: 50%; left: 7px; transform: translate(-50%, -50%) rotate(90deg); transform-origin: center; background: var(--paper); padding: 0 8px; white-space: nowrap; }
+  .video-frame { position: relative; aspect-ratio: 16 / 9; border: 35px solid #2e2540; border-radius: 62px; background: #2e2540; }
+  .video-frame video { display: block; width: 100%; height: 100%; object-fit: cover; border-radius: 27px; background: var(--frame); }
+  .video-frame .play { border-radius: 27px; }
+  .play {
+    position: absolute; inset: 0; width: 100%; border: 0; cursor: pointer; background: rgba(10,10,14,.18);
+    display: flex; flex-direction: row; align-items: flex-end; justify-content: flex-start; gap: 14px; color: #fff;
+    padding: 28px; font: inherit; font-weight: 600; font-size: 1rem; border-radius: inherit; transition: background .2s ease;
+  }
+  .play:hover { background: rgba(10,10,14,.3); }
+  .play svg { width: 64px; height: 64px; padding: 15px; box-sizing: border-box; border-radius: 50%; background: var(--pink); box-shadow: 0 10px 30px -8px rgba(0,0,0,.6); transition: transform .15s ease; }
+  .play:hover svg { transform: scale(1.06); }
+  .play span { background: rgba(10,10,14,.55); padding: 8px 16px; border-radius: 999px; font-size: .95rem; margin-bottom: 14px; }
+  .video-frame.playing .play { display: none; }
 
   /* ---------- sections ---------- */
   section { padding: 88px 0; }
@@ -254,9 +256,13 @@
     .nav .wrap { height: 58px; gap: 12px; }
     .nav .btn-sm { padding: 8px 14px; }
     .nav .coffee-slot .btn span { display: none; }
-    .measured { padding: 0; margin: 36px 0 0; }
-    .dim { display: none; }
+    .measured { margin: 36px 0 0; }
     .shot { border-radius: 8px; }
+    .video-frame { border-width: 14px; border-radius: 28px; }
+    .video-frame video, .video-frame .play { border-radius: 14px; }
+    .play { padding: 14px; }
+    .play svg { width: 48px; height: 48px; padding: 11px; }
+    .play span { display: none; }
     .pane td, .pane th { padding-left: 12px; padding-right: 12px; }
     .pane:not(.glimpse) th:nth-child(2), .pane:not(.glimpse) td:nth-child(2),
     .pane.glimpse th:nth-child(4), .pane.glimpse td:nth-child(4) { display: none; }
@@ -309,11 +315,16 @@
         </div>
       </div>
 
-      <figure class="measured" aria-label="Glimpse list view, measured like one of its own images">
-        <div class="dim dim-x" aria-hidden="true"><i></i><span>1600 × 1000</span></div>
-        <div class="dim dim-y" aria-hidden="true"><i></i><span>1000 px</span></div>
-        <div class="shot">
-          <img src="assets/shot-list.webp" srcset="assets/shot-list-800.webp 800w, assets/shot-list.webp 1600w" sizes="(max-width: 1168px) 100vw, 1084px" width="1600" height="1000" alt="Glimpse showing a folder of RAW and JPEG photos as a list with Name, Tags, Kind, Dimensions, Size and Modified columns, and an inspector panel with the selected photo's camera settings" fetchpriority="high">
+      <figure class="measured" aria-label="Glimpse explainer video">
+        <div class="shot video-frame">
+          <video id="explainer" poster="assets/video-poster.jpg" preload="metadata" playsinline width="1920" height="1080">
+            <source src="assets/glimpse-explainer.mp4" type="video/mp4">
+            Your browser can't play this video. <a href="assets/glimpse-explainer.mp4">Download it</a> instead.
+          </video>
+          <button class="play" type="button" aria-label="Play the one-minute explainer">
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.5v13l11-6.5z"/></svg>
+            <span>Watch the one-minute tour</span>
+          </button>
         </div>
       </figure>
     </div>
@@ -570,6 +581,23 @@
     } else {
       window.addEventListener('scroll', function () { nav.classList.toggle('scrolled', window.scrollY > 400); });
     }
+  })();
+
+  // Explainer video: poster + big play button, then native controls with sound.
+  (function () {
+    var frame = document.querySelector('.video-frame');
+    var video = document.getElementById('explainer');
+    var play = frame && frame.querySelector('.play');
+    if (!video || !play) return;
+    play.addEventListener('click', function () {
+      video.controls = true;
+      frame.classList.add('playing');
+      video.play();
+    });
+    video.addEventListener('ended', function () {
+      video.controls = false;
+      frame.classList.remove('playing');
+    });
   })();
 
   // Point every Download button at the newest DMG and show its version.
