@@ -12,7 +12,8 @@
 <meta property="og:image" content="https://fluidbrush.github.io/glimpse/assets/og.jpg">
 <meta property="og:url" content="https://fluidbrush.github.io/glimpse/">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="theme-color" content="#ffffff">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#121216" media="(prefers-color-scheme: dark)">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&display=swap" rel="stylesheet">
@@ -28,11 +29,37 @@
     --pink-soft: #fff0f5;
     --frame: #1d1d22;
     --coffee: #ffdd00;
+    --nav-bg: rgba(255,255,255,.85);
+    --shot-ring: rgba(0,0,0,.08);
+    --shot-shadow: rgba(23,23,28,.45);
+    --dash: #b5b5c0;
+    --band: #1d1d22;
+    --support: #26262c;
     --max: 1120px;
     --gutter: 24px;
     --radius: 14px;
     --font: "Bricolage Grotesque", "Helvetica Neue", Arial, sans-serif;
   }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #121216;
+      --panel: #1c1c22;
+      --ink: #f1f1f4;
+      --muted: #9a9aa8;
+      --line: #2b2b33;
+      --pink: #ff4d8a;
+      --pink-deep: #ff6d9e;
+      --pink-soft: #33182a;
+      --frame: #0a0a0d;
+      --nav-bg: rgba(18,18,22,.8);
+      --shot-ring: rgba(255,255,255,.1);
+      --shot-shadow: rgba(0,0,0,.8);
+      --dash: #4d4d58;
+      --band: #0b0b0e;
+      --support: #18181d;
+    }
+  }
+  html { color-scheme: light dark; }
   * { box-sizing: border-box; }
   html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
   @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } * { transition: none !important; animation: none !important; } }
@@ -71,7 +98,7 @@
 
   /* ---------- nav ---------- */
   .nav {
-    position: sticky; top: 0; z-index: 50; background: rgba(255,255,255,.85);
+    position: sticky; top: 0; z-index: 50; background: var(--nav-bg);
     backdrop-filter: saturate(160%) blur(14px); -webkit-backdrop-filter: saturate(160%) blur(14px);
     border-bottom: 1px solid transparent; transition: border-color .2s ease;
   }
@@ -103,7 +130,7 @@
   .measured { position: relative; margin: 56px 0 0; padding: 36px 36px 0 0; }
   .shot {
     border-radius: 12px; overflow: hidden; background: var(--frame);
-    box-shadow: 0 1px 0 rgba(0,0,0,.06), 0 24px 60px -24px rgba(23,23,28,.45), 0 0 0 1px rgba(0,0,0,.08);
+    box-shadow: 0 24px 60px -24px var(--shot-shadow), 0 0 0 1px var(--shot-ring);
   }
   .shot img { width: 100%; }
   .dim { position: absolute; color: var(--pink); font-weight: 600; font-size: .85rem; letter-spacing: .01em; font-variant-numeric: tabular-nums; }
@@ -128,13 +155,13 @@
   .pane { border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; background: var(--paper); }
   .pane header { padding: 14px 18px; border-bottom: 1px solid var(--line); font-weight: 600; display: flex; justify-content: space-between; align-items: center; background: var(--panel); }
   .pane header small { color: var(--muted); font-weight: 500; }
-  .pane.glimpse header { background: var(--pink-soft); border-bottom-color: #ffd3e2; }
+  .pane.glimpse header { background: var(--pink-soft); border-bottom-color: color-mix(in srgb, var(--pink) 30%, var(--line)); }
   .pane .scroll { overflow-x: auto; }
   .pane table { width: 100%; border-collapse: collapse; font-size: .95rem; }
   .pane th { text-align: left; font-weight: 500; color: var(--muted); padding: 10px 18px; border-bottom: 1px solid var(--line); font-size: .85rem; }
   .pane td { padding: 11px 18px; border-bottom: 1px solid var(--line); white-space: nowrap; font-variant-numeric: tabular-nums; }
   .pane tr:last-child td { border-bottom: 0; }
-  .pane td.dash { color: #b5b5c0; }
+  .pane td.dash { color: var(--dash); }
   .pane td.num { font-weight: 600; }
   .pane .star { color: #e9b400; }
   .tagdot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; vertical-align: 1px; }
@@ -149,7 +176,7 @@
   .feature-text ul { margin: 4px 0 0; padding: 0; list-style: none; display: grid; gap: 8px; color: var(--ink); font-size: .97rem; }
   .feature-text li { padding-left: 22px; position: relative; }
   .feature-text li::before { content: ""; position: absolute; left: 0; top: .62em; width: 10px; height: 2px; background: var(--pink); }
-  .feature-media .shot { box-shadow: 0 1px 0 rgba(0,0,0,.05), 0 18px 48px -22px rgba(23,23,28,.4), 0 0 0 1px rgba(0,0,0,.08); }
+  .feature-media .shot { box-shadow: 0 18px 48px -22px var(--shot-shadow), 0 0 0 1px var(--shot-ring); }
   .feature-media.narrow { max-width: 380px; margin: 0 auto; }
   kbd { font-family: inherit; font-size: .82em; font-weight: 600; background: var(--panel); border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 6px; padding: 1px 7px; white-space: nowrap; }
 
@@ -172,7 +199,7 @@
   /* columns cloud */
   .columns-cloud { display: flex; flex-wrap: wrap; gap: 8px; }
   .columns-cloud span { padding: 7px 13px; border: 1px solid var(--line); border-radius: 999px; font-size: .93rem; background: var(--paper); }
-  .columns-cloud span.on { background: var(--ink); color: #fff; border-color: var(--ink); }
+  .columns-cloud span.on { background: var(--ink); color: var(--paper); border-color: var(--ink); }
 
   /* shortcuts */
   .shortcuts { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 0 40px; margin-top: 8px; }
@@ -181,14 +208,14 @@
   .shortcuts kbd + kbd { margin-left: 3px; }
 
   /* dark band: privacy + support */
-  .band { background: var(--frame); color: #fff; }
+  .band { background: var(--band); color: #fff; }
   .band .section-head p, .band .muted { color: #a9a9b6; }
   .band-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; align-items: start; }
   .band h2 { color: #fff; }
   .facts { display: grid; gap: 14px; margin-top: 8px; }
   .facts div { display: grid; grid-template-columns: 26px 1fr; gap: 12px; align-items: start; font-size: 1.02rem; }
   .facts svg { width: 22px; height: 22px; color: var(--pink); margin-top: 3px; }
-  .support { background: #26262c; border-radius: var(--radius); padding: 32px; display: flex; flex-direction: column; gap: 18px; }
+  .support { background: var(--support); border-radius: var(--radius); padding: 32px; display: flex; flex-direction: column; gap: 18px; }
   .support p { color: #c9c9d4; max-width: 40ch; }
   .support .cta-row { margin-top: 4px; }
 
