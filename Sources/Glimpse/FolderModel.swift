@@ -189,74 +189,113 @@ final class FolderModel: ObservableObject {
 
     func rescan() {
         scanTask?.cancel()
+        scanGeneration += 1
         guard let url = currentURL else { return }
         isScanning = true
         loadedCount = 0
+        metaQueue.removeAll()
+        visibleRequests.removeAll()
+        inFlight.removeAll()
         let showHidden = self.showHidden
-        let folderSizes = self.computeFolderSizes
+        let generation = scanGeneration
 
         scanTask = Task { [weak self] in
             let listed = await Task.detached(priority: .userInitiated) {
                 FolderModel.list(url, showHidden: showHidden)
             }.value
-            guard let self, !Task.isCancelled else { return }
+            guard let self, !Task.isCancelled, generation == self.scanGeneration else { return }
             switch listed {
             case .success(let found):
                 self.errorMessage = nil
                 self.items = found
                 self.applyPendingSelection()
-                await self.loadMetadata(for: found, folderSizes: folderSizes)
+                // Metadata is read progressively: rows that are on screen first
+                // (the views call requestMetadata as they appear), the rest trickles
+                // in behind at low concurrency.
+                self.metaQueue = found.filter { $0.kind != .other }.map(\.id)
+                self.loadedCount = found.count - self.metaQueue.count
+                self.pumpMetadata()
             case .failure(let error):
                 self.items = []
                 self.errorMessage = error.localizedDescription
+                self.isScanning = false
             }
-            if !Task.isCancelled { self.isScanning = false }
         }
     }
 
-    private func loadMetadata(for listed: [FileItem], folderSizes: Bool) async {
-        guard !listed.isEmpty else { return }
-        let maxConcurrent = max(2, min(6, ProcessInfo.processInfo.activeProcessorCount / 2))
+    // MARK: Progressive metadata scheduler
 
-        await withTaskGroup(of: Optional<(String, MediaMeta)>.self) { group in
-            var next = 0
-            let initial = min(maxConcurrent, listed.count)
-            for i in 0..<initial {
-                let item = listed[i]
-                group.addTask {
-                    if Task.isCancelled { return nil }
-                    let meta = await MetadataReader.read(item, computeFolderSize: folderSizes)
-                    return (item.id, meta)
-                }
-            }
-            next = initial
+    private var scanGeneration = 0
+    /// Items still waiting for metadata, in listing order.
+    private var metaQueue: [String] = []
+    /// Items currently on screen that asked to be read first (most recent first).
+    private var visibleRequests: [String] = []
+    private var inFlight = Set<String>()
+    private var applyBuffer: [(String, MediaMeta)] = []
+    private var flushScheduled = false
+    private let visibleConcurrency = max(3, min(8, ProcessInfo.processInfo.activeProcessorCount))
+    private let backgroundConcurrency = 2
 
-            // Results are applied in batches (every ~150 ms) so the table isn't
-            // re-rendered for every single file, which kept swallowing clicks.
-            var pending: [(String, MediaMeta)] = []
-            var lastFlush = Date()
-            for await result in group {
-                if Task.isCancelled {
-                    group.cancelAll()
-                    break
-                }
-                if let result { pending.append(result) }
-                if Date().timeIntervalSince(lastFlush) > 0.15 || pending.count >= 40 {
-                    applyBatch(pending)
-                    pending.removeAll(keepingCapacity: true)
-                    lastFlush = Date()
-                }
-                if next < listed.count {
-                    let item = listed[next]
-                    next += 1
-                    group.addTask {
-                        if Task.isCancelled { return nil }
-                        let meta = await MetadataReader.read(item, computeFolderSize: folderSizes)
-                        return (item.id, meta)
-                    }
-                }
+    /// Called by list rows and grid cells as they appear on screen.
+    func requestMetadata(_ id: FileItem.ID) {
+        guard !inFlight.contains(id), metaQueue.contains(id) else { return }
+        visibleRequests.removeAll { $0 == id }
+        visibleRequests.insert(id, at: 0)
+        if visibleRequests.count > 400 { visibleRequests.removeLast(visibleRequests.count - 400) }
+        pumpMetadata()
+    }
+
+    private func pumpMetadata() {
+        let generation = scanGeneration
+        let folderSizes = computeFolderSizes
+        while true {
+            let limit = visibleRequests.isEmpty ? backgroundConcurrency : visibleConcurrency
+            guard inFlight.count < limit else { return }
+            guard let id = nextMetadataID() else {
+                if inFlight.isEmpty { isScanning = false }
+                return
             }
-            if !pending.isEmpty && !Task.isCancelled { applyBatch(pending) }
+            guard let item = items.first(where: { $0.id == id }) else { continue }
+            inFlight.insert(id)
+            Task { [weak self] in
+                let meta = await MetadataReader.read(item, computeFolderSize: folderSizes)
+                guard let self, generation == self.scanGeneration else { return }
+                self.inFlight.remove(id)
+                self.applyBuffer.append((id, meta))
+                self.scheduleFlush()
+                self.pumpMetadata()
+            }
+        }
+    }
+
+    private func nextMetadataID() -> String? {
+        while let id = visibleRequests.first {
+            visibleRequests.removeFirst()
+            if let index = metaQueue.firstIndex(of: id) {
+                metaQueue.remove(at: index)
+                return id
+            }
+        }
+        while !metaQueue.isEmpty {
+            let id = metaQueue.removeFirst()
+            if !inFlight.contains(id) { return id }
+        }
+        return nil
+    }
+
+    /// Results are applied in small batches so the table isn't re-rendered for
+    /// every single file (which swallowed clicks while scanning).
+    private func scheduleFlush() {
+        guard !flushScheduled else { return }
+        flushScheduled = true
+        Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 120_000_000)
+            guard let self else { return }
+            self.flushScheduled = false
+            let batch = self.applyBuffer
+            self.applyBuffer.removeAll(keepingCapacity: true)
+            self.applyBatch(batch)
+            if self.metaQueue.isEmpty && self.inFlight.isEmpty && self.applyBuffer.isEmpty { self.isScanning = false }
         }
     }
 
@@ -435,6 +474,7 @@ final class FolderModel: ObservableObject {
         for url in urls {
             do {
                 try FileManager.default.trashItem(at: url, resultingItemURL: nil)
+                pathDidMove(from: url, to: nil)
             } catch {
                 errorMessage = "Couldn't move \(url.lastPathComponent) to Trash: \(error.localizedDescription)"
             }
@@ -550,6 +590,15 @@ final class FolderModel: ObservableObject {
     }
 
     private func transfer(_ sources: [URL], to destination: URL, move: Bool) {
+        if move {
+            for source in sources {
+                var isDirectory: ObjCBool = false
+                if FileManager.default.fileExists(atPath: source.path, isDirectory: &isDirectory), isDirectory.boolValue,
+                   source.deletingLastPathComponent().standardizedFileURL != destination.standardizedFileURL {
+                    pathDidMove(from: source, to: destination.appendingPathComponent(source.lastPathComponent))
+                }
+            }
+        }
         runFileOperation { fm in
             var created: [URL] = []
             for source in sources {
@@ -630,9 +679,33 @@ final class FolderModel: ObservableObject {
             return
         }
         let source = item.url
+        if item.kind == .folder { pathDidMove(from: source, to: destination) }
         runFileOperation { fm in
             try fm.moveItem(at: source, to: destination)
             return [destination]
+        }
+    }
+
+    /// Keeps Favorites, Recent, and the back/forward history pointing at a folder
+    /// after it has been renamed or moved. `to == nil` means it is gone (trashed).
+    private func pathDidMove(from oldURL: URL, to newURL: URL?) {
+        let oldPath = oldURL.standardizedFileURL.path
+        func remap(_ url: URL) -> URL? {
+            let path = url.standardizedFileURL.path
+            if path == oldPath { return newURL?.standardizedFileURL }
+            if path.hasPrefix(oldPath + "/") {
+                guard let newURL else { return nil }
+                return URL(fileURLWithPath: newURL.standardizedFileURL.path + String(path.dropFirst(oldPath.count)))
+            }
+            return url
+        }
+        favorites = favorites.compactMap(remap)
+        recents = recents.compactMap(remap)
+        backStack = backStack.compactMap(remap)
+        forwardStack = forwardStack.compactMap(remap)
+        if let current = currentURL, let remapped = remap(current), remapped != current {
+            currentURL = remapped
+            defaults.set(remapped.path, forKey: Keys.lastFolder)
         }
     }
 
@@ -661,9 +734,10 @@ final class FolderModel: ObservableObject {
         }
     }
 
+    /// Removes colour and custom tags but keeps the shortlist star.
     func clearTags(_ ids: Set<FileItem.ID>) {
         for item in ids.compactMap({ item(for: $0) }) {
-            writeTags([], to: item)
+            writeTags(item.isShortlisted ? [shortlistTagName] : [], to: item)
         }
     }
 

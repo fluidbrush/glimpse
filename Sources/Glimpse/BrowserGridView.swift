@@ -42,6 +42,7 @@ struct BrowserGridView: View {
 
     private func cell(for item: FileItem) -> some View {
         GridCell(item: item, size: cellSize, selected: model.selection.contains(item.id))
+            .onAppear { if item.metaState == .pending { model.requestMetadata(item.id) } }
             .onTapGesture(count: 2) {
                 model.openItem(item)
             }

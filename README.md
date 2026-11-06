@@ -30,7 +30,7 @@ Finder shows pixel dimensions only if you open Get Info, and gives up entirely w
 - **List or thumbnail view** (⌘1 / ⌘2) with a thumbnail size slider
 - **Quick Look** with Space, exactly like Finder; arrow keys move through the folder
 - **Inspector** with a large preview and *Copy Size* / *Copy CSS* buttons
-- **Shortlist & tags** – star your best work (⇧⌘L) and apply Finder colour tags (⌃1–7). They are real Finder tags, so they show up in Finder and Spotlight too; filter the view by them from the toolbar
+- **Shortlist & tags** – star your best work (⇧⌘L) and, separately, apply Finder colour tags (⌃1–7). Both are real Finder tags, so they show up in Finder and Spotlight too; filter the view by them from the toolbar
 - **Finder-style file management** – copy, paste, move (⌥⌘V), duplicate (⌘D → `copy_name`), rename (Return or ⇧⌘R), new folder, new folder with selection, copy/move to a folder of your choice, move to Trash
 - **Filters** – everything / images / videos / folders / other, plus name search
 - Sidebar with Places, Favorites, Volumes and Recent folders; drag a folder onto the window to open it
@@ -64,7 +64,7 @@ The version number comes from the `VERSION` file.
 
 - Only the folder you are looking at is scanned; nothing crawls your disk.
 - Metadata is read from file headers with ImageIO and AVFoundation — pixels are never decoded just to get a size.
-- Files are read 2–6 at a time in the background, results are applied in batches, and the scan is cancelled the moment you change folder. ⌘R re-reads only the current folder.
+- Metadata is read progressively: the rows on screen are read first, the rest of the folder trickles in behind at low priority, results are applied in batches, and everything is cancelled the moment you change folder. ⌘R re-reads only the current folder.
 - Thumbnails use the embedded camera preview when there is one and are kept in a bounded cache (~256 MB max). Settings (⌘,) can turn list-view thumbnails off for instant file icons.
 - Folder sizes are off by default because they require walking sub-folders.
 

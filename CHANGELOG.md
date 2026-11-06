@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Metadata is read for the rows on screen first, then the rest of the folder in the background
+- Removing colour tags no longer removes the shortlist star
+- Renaming, moving or trashing a folder updates Favorites, Recent and the back/forward history
+
 ## 1.0.0
 
 First public release.

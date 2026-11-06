@@ -119,8 +119,9 @@ struct BrowserListView: View {
 
     private var nameColumn: some TableColumnContent<FileItem, Sort> {
         let showThumbnail = model.showListThumbnails
+        let onAppear: (FileItem.ID) -> Void = { [model] id in model.requestMetadata(id) }
         return TableColumn("Name", value: \FileItem.name, comparator: String.StandardComparator.localizedStandard) { (item: FileItem) in
-            NameCell(item: item, showThumbnail: showThumbnail)
+            NameCell(item: item, showThumbnail: showThumbnail, onAppear: onAppear)
         }
         .width(min: 180, ideal: 280)
         .customizationID("name")
@@ -321,6 +322,7 @@ struct ColumnsMenu: View {
 private struct NameCell: View {
     let item: FileItem
     let showThumbnail: Bool
+    let onAppear: (FileItem.ID) -> Void
 
     var body: some View {
         HStack(spacing: 8) {
@@ -336,6 +338,7 @@ private struct NameCell: View {
             }
         }
         .help(item.url.path)
+        .onAppear { if item.metaState == .pending { onAppear(item.id) } }
     }
 }
 
@@ -359,7 +362,7 @@ struct TagsCell: View {
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
             }
-            if item.tags.isEmpty {
+            if !item.isShortlisted && item.colorTags.isEmpty && item.customTags.isEmpty {
                 Text("—").foregroundStyle(.quaternary)
             }
         }
@@ -499,7 +502,7 @@ struct TagMenuItems: View {
                 .keyboardShortcut(KeyEquivalent(Character(String(index + 1))), modifiers: .control)
             }
             Divider()
-            Button("Remove All Tags") { model.clearTags(ids) }
+            Button("Remove Colour Tags") { model.clearTags(ids) }
                 .keyboardShortcut("0", modifiers: .control)
         }
         .disabled(ids.isEmpty)

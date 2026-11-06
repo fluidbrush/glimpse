@@ -127,7 +127,7 @@ enum TagFilter: Hashable {
         case .any: return true
         case .shortlist: return item.isShortlisted
         case .color(let tag): return item.colorTags.contains(tag)
-        case .untagged: return item.tags.isEmpty
+        case .untagged: return item.colorTags.isEmpty && item.customTags.isEmpty
         }
     }
 }
